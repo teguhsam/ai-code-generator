@@ -44,16 +44,15 @@ def write_output(cpp):
     with open("optimized.cpp", "w") as f:
         f.write(code)
 
-def optimize_gpt(python):    
+def stream_gpt(python):    
     stream = openai.chat.completions.create(model=OPENAI_MODEL, messages=messages_for(python), stream=True)
     reply = ""
     for chunk in stream:
         fragment = chunk.choices[0].delta.content or ""
         reply += fragment
-        print(fragment, end='', flush=True)
-    write_output(reply)
+        yield reply.replace('```cpp\n','').replace('```','')
 
-def optimize_claude(python):
+def stream_claude(python):
     result = claude.messages.stream(
         model=CLAUDE_MODEL,
         max_tokens=2000,
@@ -64,10 +63,17 @@ def optimize_claude(python):
     with result as stream:
         for text in stream.text_stream:
             reply += text
-            print(text, end="", flush=True)
-    write_output(reply)
+            yield reply.replace('```cpp\n','').replace('```','')
 
-
+def optimize(python, model):
+    if model=="GPT":
+        result = stream_gpt(python)
+    elif model=="Claude":
+        result = stream_claude(python)
+    else:
+        raise ValueError("Unknown model")
+    for stream_so_far in result:
+        yield stream_so_far       
 
 python_script = """
 def lcg(seed, a=1664525, c=1013904223, m=2**32):
@@ -112,8 +118,50 @@ print("Total Maximum Subarray Sum (20 runs):", result)
 print("Execution Time: {:.6f} seconds".format(end_time - start_time))
 """
 
-# exec(python_script)
+def execute_python(code):
+    try:
+        output = io.StringIO()
+        sys.stdout = output
+        namespace = {}
+        exec(code, namespace)
+    finally:
+        sys.stdout = sys.__stdout__
+    return output.getvalue()
 
-# optimize_gpt(python_script)
+def execute_cpp(code):
+    write_output(code)
+    try:
+        compile_cmd = ["clang++", "-Ofast", "-std=c++17", "-march=armv8.5-a", "-o", "optimized", "optimized.cpp"]
+        compile_result = subprocess.run(compile_cmd, check=True, text=True, capture_output=True)
+        run_cmd = ["./optimized"]
+        run_result = subprocess.run(run_cmd, check=True, text=True, capture_output=True)
+        return run_result.stdout
+    except subprocess.CalledProcessError as e:
+        return f"An error occurred:\n{e.stderr}"
+    
+css = """
+.python {background-color: #306998;}
+.cpp {background-color: #050;}
+"""
 
-optimize_claude(python_script)
+with gr.Blocks(css=css) as ui:
+    gr.Markdown("## Convert code from Python to C++")
+    with gr.Row():
+        python = gr.Textbox(label="Python code:", value=python_script, lines=10)
+        cpp = gr.Textbox(label="C++ code:", lines=10)
+    with gr.Row():
+        model = gr.Dropdown(["GPT", "Claude"], label="Select model", value="GPT")
+    with gr.Row():
+        convert = gr.Button("Convert code")
+    with gr.Row():
+        python_run = gr.Button("Run Python")
+        cpp_run = gr.Button("Run C++")
+    with gr.Row():
+        python_out = gr.TextArea(label="Python result:", elem_classes=["python"])
+        cpp_out = gr.TextArea(label="C++ result:", elem_classes=["cpp"])
+
+    convert.click(optimize, inputs=[python, model], outputs=[cpp])
+    python_run.click(execute_python, inputs=[python], outputs=[python_out])
+    cpp_run.click(execute_cpp, inputs=[cpp], outputs=[cpp_out])
+
+ui.launch(inbrowser=True)
