@@ -1,3 +1,4 @@
 .env
 venv/
 optimized
+__pycache__
