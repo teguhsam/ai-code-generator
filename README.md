@@ -1,6 +1,7 @@
 # AI Code Generator
 
 This project provides an interface to convert Python code to optimized C++ code using OpenAI's GPT or Anthropic's Claude models. The project uses Gradio for the UI and includes functionality to execute both Python and C++ code.
+https://github.com/user-attachments/assets/b092b775-52c6-4208-8f4d-c8bbc6161094
 
 ## Table of Contents
 
@@ -16,7 +17,6 @@ This project provides an interface to convert Python code to optimized C++ code 
     - [Running the Application](#running-the-application)
     - [C++ Code Compilation](#c-code-compilation)
     - [Debugging/Errors](#debuggingerrors)
-  - [Demo Video](#demo-video)
   - [File Structure](#file-structure)
   - [Dependencies](#dependencies)
 
@@ -98,12 +98,6 @@ If you encounter any issues, ensure:
 - The clang++ compiler is available in your system's path.
 - All required Python packages are installed.
 -
-
-## Demo Video
-
-https://github.com/user-attachments/assets/b092b775-52c6-4208-8f4d-c8bbc6161094
-
-
 
 ## File Structure
 
